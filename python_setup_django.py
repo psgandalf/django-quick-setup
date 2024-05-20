@@ -42,7 +42,7 @@ def main():
 
     # Install dependencies
     print("Installing dependencies...")
-    run_command("venv/bin/pip install django django-tailwind django-browser-reload whitenoise", "Could not install dependencies.")
+    run_command("venv/bin/pip install django django-tailwind whitenoise", "Could not install dependencies.")
 
     # Create Django project
     print(f"Creating Django project: {project_name}...")

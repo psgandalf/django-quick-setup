@@ -1,0 +1,8 @@
+asgiref==3.8.1
+django==5.0.6
+django-browser-reload==1.12.1
+django-tailwind==3.8.0
+pip==24.0
+sqlparse==0.5.0
+uv==0.1.44
+whitenoise==6.6.0
