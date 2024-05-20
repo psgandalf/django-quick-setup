@@ -12,6 +12,26 @@ def run_command(command, error_message):
         print(error_message)
         sys.exit(1)
 
+def check_package_versions(requirements_file):
+    with open(requirements_file, 'r') as file:
+        lines = file.readlines()
+
+    packages = {
+        'django': None,
+        'django-tailwind': None,
+        'whitenoise': None
+    }
+
+    for line in lines:
+        line = line.strip()
+        if line.startswith('#'):
+            continue  # Skip comments
+        if '==' in line:
+            package_name, version = line.split('==')
+            packages[package_name.lower()] = version.strip()
+
+    return packages
+
 def main():
     project_name = "core"
     app_name = "app"
@@ -40,9 +60,16 @@ def main():
     print("Upgrading pip...")
     run_command("venv/bin/pip install --upgrade pip", "Could not upgrade pip.")
 
-    # Install dependencies
+        # Install dependencies
     print("Installing dependencies...")
-    run_command("venv/bin/pip install django django-tailwind whitenoise", "Could not install dependencies.")
+    if os.path.exists("requirements.txt"):
+        package_versions = check_package_versions("requirements.txt")
+        for package, version in package_versions.items():
+            if version is not None:
+                print(f"Installing {package} {version}...")
+                run_command(f"venv/bin/pip install {package}=={version}", f"Could not upgrade {package}.")
+    else:
+        run_command("venv/bin/pip install django django-tailwind whitenoise", "Could not install dependencies.")
 
     # Create Django project
     print(f"Creating Django project: {project_name}...")
