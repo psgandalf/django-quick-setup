@@ -93,7 +93,7 @@ def main():
 
     # Edit tailwind.config.js
     print("Editing tailwind.config.js for Django and Flowbite...")
-    with open(f"tailwind.config.js" , 'w') as file:
+    with open("tailwind.config.js" , 'w') as file:
         file.write("/** @type {import('tailwindcss').Config} */\n")
         file.write("module.exports = {\n")
         file.write("  content: [\n")
@@ -200,8 +200,8 @@ def main():
 
     # creating and editing input.css
     print("Creating and editing input.css")
-    os.makedirs(os.path.dirname(f"static/src/input.css"), exist_ok=True)
-    with open(f"static/src/input.css" , 'w') as file:
+    os.makedirs(os.path.dirname("static/src/input.css"), exist_ok=True)
+    with open("static/src/input.css" , 'w') as file:
         file.write("@tailwind base;\n")
         file.write("@tailwind components;\n")
         file.write("@tailwind utilities;\n")
