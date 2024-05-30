@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
+import fileinput
 import os
 import subprocess
 import sys
-import fileinput
+
 
 def run_command(command, error_message):
     try:
@@ -143,7 +144,7 @@ def main():
                 print(line, end="")
                 print("".join(lines_to_insert["INSTALLED_APPS = ["]), end="")
                 continue
-            if "'django.contrib.messages'," in line:
+            if '"django.contrib.messages",' in line:
                 # Append lines after INSTALLED_APPS
                 print(line, end="")
                 print("".join(lines_to_insert["django.contrib.messages"]), end="")
@@ -158,9 +159,9 @@ def main():
                 print(line, end="")
                 print("".join(lines_to_insert["STATIC_URL"]), end="")
                 continue
-            if "'DIRS': []" in line:
+            if '"DIRS": []' in line:
                 # Replace the DIRS line
-                line = line.replace("'DIRS': []", "'DIRS': [BASE_DIR / 'templates']")
+                line = line.replace('"DIRS": []', "'DIRS': [BASE_DIR / 'templates']")
             print(line, end="")
 
     # Create Tailwind CSS input file
