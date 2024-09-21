@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 import fileinput
 import os
 import subprocess
@@ -45,44 +44,32 @@ def main():
 
     # Create virtual environment
     print("Creating virtual environment...")
-    run_command("python3 -m venv venv", "Could not create a virtual environment.")
+    run_command("uv init", "Could not init a virtual environment.")
+    run_command("uv venv", "Could not create a virtual environment.")
 
-    # Copying activate_this.py
-    print("Copying activate_this.py...")
-    run_command("cp resourses/activate_this.py venv/bin", "Could not copy activate_this.py.")
-
-    # Activate virtual environment
-    print("Activating virtual environment...")
-    activate_this = os.path.join(os.getcwd(), "venv", "bin", "activate_this.py")
-    with open(activate_this) as f:
-        exec(f.read(), dict(__file__=activate_this))
-
-    # Upgrade pip in the virtual environment
-    print("Upgrading pip...")
-    run_command("venv/bin/pip install --upgrade pip", "Could not upgrade pip.")
-
-        # Install dependencies
+    # Install dependencies
     print("Installing dependencies...")
     if os.path.exists("requirements.txt"):
         package_versions = check_package_versions("requirements.txt")
         for package, version in package_versions.items():
             if version is not None:
                 print(f"Installing {package} {version}...")
-                run_command(f"venv/bin/pip install {package}=={version}", f"Could not upgrade {package}.")
+                run_command(f"uv add {package}=={version}", f"Could not upgrade {package}.")
     else:
-        run_command("venv/bin/pip install django django-tailwind whitenoise", "Could not install dependencies.")
-
+        print("requirements.txt not found. Installing default dependencies...")
+        run_command("uv add django django-tailwind whitenoise", "Could not install dependencies.")
+    
     # Create Django project
     print(f"Creating Django project: {project_name}...")
-    run_command(f"django-admin startproject {project_name}", "Could not create Django project.")
-
+    run_command(f"uv run django-admin startproject {project_name}", "Could not create Django project.")
+    
     # Change dir to project_name
     os.chdir(project_name)
-
+    
     # Create Django app
     print(f"Creating Django app: {app_name}...")
-    run_command(f"python manage.py startapp {app_name}", "Could not create Django app.")
-
+    run_command(f"uv run manage.py startapp {app_name}", "Could not create Django app.")
+    
     # Install Tailwind and Flowbite
     print("Installing Tailwind CSS and Flowbite...")
     run_command("npm install -D tailwindcss@latest postcss@latest autoprefixer@latest", "Could not install Tailwind CSS.")
@@ -109,69 +96,80 @@ def main():
         file.write("  ],\n")
         file.write("}") 
 
-    # Changning settings.p
+    # Changing settings.py....
     print("Changing settings.py....")
-    # Define the lines to be inserted
+    settings_file = f"{project_name}/settings.py"
     lines_to_insert = {
-        1: "import os\n",
-        "INSTALLED_APPS = [": [
-            "    'tailwind',\n"
-        ],
-        "django.contrib.messages" : [
-            "    'whitenoise.runserver_nostatic',\n"
-        ],
-        "django.middleware.security.SecurityMiddleware": [
-            "    'whitenoise.middleware.WhiteNoiseMiddleware',\n"  
-        ],
-        "STATIC_URL": [
-            'STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"\n',
-            'STATIC_ROOT = BASE_DIR / "staticfiles"\n',
-            'STATICFILES_DIRS = [\n',
-            '\tos.path.join(BASE_DIR, "static"),\n',
-            ']\n',
-            'WHITENOISE_USE_FINDERS = True\n'
+        'import': "import os\n",
+        'INSTALLED_APPS': "    'tailwind',\n",
+        'MIDDLEWARE': "    'whitenoise.middleware.WhiteNoiseMiddleware',\n",
+        'TEMPLATES': "        'DIRS': [BASE_DIR / 'templates'],\n",
+        'STATIC_URL': [
+            "STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'\n",
+            "STATIC_ROOT = BASE_DIR / 'staticfiles'\n",
+            "STATICFILES_DIRS = [\n",
+            "    os.path.join(BASE_DIR, 'static'),\n",
+            "]\n",
+            "WHITENOISE_USE_FINDERS = True\n"
         ]
     }
 
-    # Read the file and apply the transformations
-    with fileinput.FileInput(f"{project_name}/settings.py", inplace=True) as file:
-        for i, line in enumerate(file, start=1):
-            if i == 1:
-                # Insert import at the beginning
-                print(lines_to_insert[1], end="")
-            if "INSTALLED_APPS = [" in line:
-                # Append lines after INSTALLED_APPS
-                print(line, end="")
-                print("".join(lines_to_insert["INSTALLED_APPS = ["]), end="")
-                continue
-            if '"django.contrib.messages",' in line:
-                # Append lines after INSTALLED_APPS
-                print(line, end="")
-                print("".join(lines_to_insert["django.contrib.messages"]), end="")
-                continue
-            if "django.middleware.security.SecurityMiddleware" in line:
-                # Append lines after INSTALLED_APPS
-                print(line, end="")
-                print("".join(lines_to_insert["django.middleware.security.SecurityMiddleware"]), end="")
-                continue
-            if "STATIC_URL" in line:
-                # Append lines after STATIC_URL
-                print(line, end="")
-                print("".join(lines_to_insert["STATIC_URL"]), end="")
-                continue
-            if '"DIRS": []' in line:
-                # Replace the DIRS line
-                line = line.replace('"DIRS": []', "'DIRS': [BASE_DIR / 'templates']")
-            print(line, end="")
+    with open(settings_file, 'r') as file:
+        lines = file.readlines()
+
+    modified_lines = []
+    in_installed_apps = False
+    installed_apps = []
+    import_os_added = False
+
+    for line in lines:
+        if line.strip().startswith('from pathlib import Path'):
+            modified_lines.append(line)
+            modified_lines.append(lines_to_insert['import'])
+            import_os_added = True
+        elif line.strip().startswith('INSTALLED_APPS'):
+            in_installed_apps = True
+            installed_apps.append(line)
+        elif in_installed_apps and line.strip().startswith(']'):
+            installed_apps.append(lines_to_insert['INSTALLED_APPS'])
+            installed_apps.append(line)
+            modified_lines.extend(installed_apps)
+            in_installed_apps = False
+        elif in_installed_apps:
+            installed_apps.append(line)
+        elif line.strip().startswith('MIDDLEWARE'):
+            modified_lines.append(line)
+            modified_lines.append(lines_to_insert['MIDDLEWARE'])
+        elif "'DIRS': []," in line:
+            modified_lines.append(lines_to_insert['TEMPLATES'])
+        elif line.strip().startswith('STATIC_URL'):
+            modified_lines.append(line)
+            modified_lines.extend(lines_to_insert['STATIC_URL'])
+        else:
+            modified_lines.append(line)
+
+    # Add whitenoise.runserver_nostatic to INSTALLED_APPS
+    for i, line in enumerate(modified_lines):
+        if line.strip().startswith('INSTALLED_APPS'):
+            modified_lines.insert(i + 2, "    'whitenoise.runserver_nostatic',\n")
+            break
+
+    # Ensure import os is added if it wasn't found
+    if not import_os_added:
+        modified_lines.insert(0, lines_to_insert['import'])
+
+    with open(settings_file, 'w') as file:
+        file.writelines(modified_lines)
 
     # Create Tailwind CSS input file
     print("Creating Tailwind CSS input file...")
     run_command("mkdir -p static/src/", "Could not create static/src")
     run_command("mkdir -p static/images/", "Could not create static/images")
+    run_command("mkdir -p static/js/", "Could not create static/js")
     run_command("mkdir -p templates/", "Could not create templates")
-    run_command("cp ../resourses/_base.html templates/", "Could not copy _base.html")
-    run_command("cp ../resourses/index.html templates/", "Could not copy index.html")
-    run_command("cp ../images/* static/images", "Could not copy images")
+    run_command("cp ../resourses/templates/* templates/", "Could not copy templates")
+    run_command("cp ../resourses/js/* static/js/", "Could not copy js")
+    run_command("cp ../resourses/images/* static/images", "Could not copy images")
     
     # editing urls.py in app
     print("Editing urls.py in app")
@@ -209,15 +207,15 @@ def main():
     
     # Collect static files
     print("Collecting static files...")
-    run_command("python manage.py collectstatic --noinput", "Could not collect static files.")
+    run_command("uv run manage.py collectstatic --noinput", "Could not collect static files.")
     run_command("npx tailwindcss -i ./static/src/input.css -o ./static/src/output.css", "Could not compile Tailwind CSS.")
-    run_command("python manage.py migrate", "Could not migrate database.")
+    run_command("uv run manage.py migrate", "Could not migrate database.")
 
     # Done
     print("Setup complete. Run the following commands to start your project:")
-    print("source venv/bin/activate")
+    print("source .venv/bin/activate")
     print(f"cd {project_name}")
-    print("python manage.py runserver")
+    print("uv manage.py runserver")
 
 if __name__ == "__main__":
     main()
