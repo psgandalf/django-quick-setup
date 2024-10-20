@@ -3,7 +3,83 @@ import fileinput
 import os
 import subprocess
 import sys
+import random
+import string
+import shutil
 
+import django
+
+def find_project_root():
+    current_dir = os.getcwd()
+    while True:
+        if os.path.exists(os.path.join(current_dir, 'resources')):
+            return current_dir
+        parent = os.path.dirname(current_dir)
+        if parent == current_dir:
+            return None
+        current_dir = parent
+
+def update_settings_file(project_name):
+    settings_file = os.path.join(project_name, 'settings.py')
+    with open(settings_file, 'r') as file:
+        lines = file.readlines()
+
+    new_secret_key = generate_secret_key()
+    secret_key_line = f"SECRET_KEY = '{new_secret_key}'\n"
+
+    with open(settings_file, 'w') as file:
+        for line in lines:
+            if line.strip().startswith('SECRET_KEY'):
+                file.write(secret_key_line)
+            else:
+                file.write(line)
+
+    print(f"Updated SECRET_KEY in {settings_file}")
+
+def copy_django_files(project_name, app_name):
+    project_root = find_project_root()
+    if not project_root:
+        print("Error: Could not find project root directory containing 'resources' folder.")
+        return
+
+    resources_path = os.path.join(project_root, 'resources')
+    
+    files_to_copy = [
+        (os.path.join(resources_path, 'django_files', 'core', 'urls.py'), os.path.join(project_root, project_name, project_name, 'urls.py')),
+        (os.path.join(resources_path, 'django_files', 'app', 'urls.py'), os.path.join(project_root, project_name, app_name, 'urls.py')),
+        (os.path.join(resources_path, 'django_files', 'app', 'views.py'), os.path.join(project_root, project_name,app_name, 'views.py'))
+    ]
+
+    for src, dst in files_to_copy:
+        if os.path.exists(src):
+            try:
+                shutil.copy(src, dst)
+                print(f"Successfully copied {src} to {dst}")
+            except Exception as e:
+                print(f"Error copying {src} to {dst}: {str(e)}")
+        else:
+            print(f"Source file not found: {src}")
+
+def check_resources():
+    project_root = find_project_root()
+    if not project_root:
+        print("Error: Could not find project root directory containing 'resources' folder.")
+        return
+
+    print(f"Project root directory: {project_root}")
+    resources_path = os.path.join(project_root, 'resources')
+    if os.path.exists(resources_path):
+        print(f"Resources folder exists at: {os.path.abspath(resources_path)}")
+        print("Contents of resources folder:")
+        for root, dirs, files in os.walk(resources_path):
+            for name in files:
+                print(os.path.join(root, name))
+    else:
+        print(f"Resources folder not found at: {os.path.abspath(resources_path)}")
+
+def generate_secret_key(length=50):
+    characters = string.ascii_letters + string.digits + "!@#$%^&*(-_=+)"
+    return ''.join(random.choice(characters) for _ in range(length))
 
 def run_command(command, error_message):
     try:
@@ -35,6 +111,8 @@ def check_package_versions(requirements_file):
 def main():
     project_name = "core"
     app_name = "app"
+    check_resources()
+    
 
     # Check for necessary tools
     print("Checking for necessary tools...")
@@ -101,7 +179,8 @@ def main():
     settings_file = f"{project_name}/settings.py"
     lines_to_insert = {
         'import': "import os\n",
-        'INSTALLED_APPS': "    'tailwind',\n",
+        'INSTALLED_APPS': "    'tailwind',\n    'app',\n",
+        'SECRET_KEY': f"SECRET_KEY = '{generate_secret_key()}'\n",
         'MIDDLEWARE': "    'whitenoise.middleware.WhiteNoiseMiddleware',\n",
         'TEMPLATES': "        'DIRS': [BASE_DIR / 'templates'],\n",
         'STATIC_URL': [
@@ -121,6 +200,7 @@ def main():
     in_installed_apps = False
     installed_apps = []
     import_os_added = False
+
 
     for line in lines:
         if line.strip().startswith('from pathlib import Path'):
@@ -167,35 +247,17 @@ def main():
     run_command("mkdir -p static/images/", "Could not create static/images")
     run_command("mkdir -p static/js/", "Could not create static/js")
     run_command("mkdir -p templates/", "Could not create templates")
-    run_command("cp ../resourses/templates/* templates/", "Could not copy templates")
-    run_command("cp ../resourses/js/* static/js/", "Could not copy js")
-    run_command("cp ../resourses/images/* static/images", "Could not copy images")
+    run_command("cp ../resources/templates/* templates/", "Could not copy templates")
+    run_command("cp ../resources/js/* static/js/", "Could not copy js")
+    run_command("cp ../resources/images/* static/images", "Could not copy images")
     
-    # editing urls.py in app
-    print("Editing urls.py in app")
-    with open(f"{app_name}/urls.py" , 'w') as file:
-        file.write("from .views import index\n")
-        file.write("from django.urls import path\n\n")
-        file.write("urlpatterns = [\n")
-        file.write("    path('', index, name='index')\n")
-        file.write("]\n")
+    copy_django_files(project_name, app_name)
+    
 
-    # editing urls.py in project
-    print("Editing urls.py in project")
-    with open(f"{project_name}/urls.py" , 'w') as file:
-        file.write("from django.contrib import admin\n")
-        file.write("from django.urls import path, include\n\n")
-        file.write("urlpatterns = [\n")
-        file.write("    path('admin/', admin.site.urls),\n")
-        file.write("    path('', include('app.urls')), \n")
-        file.write("]\n")
- 
-    # editing views.py in app
-    print("Editing views.py in app")
-    with open(f"{app_name}/views.py" , 'w') as file:
-        file.write("from django.shortcuts import render\n\n")
-        file.write("def index(request):\n")
-        file.write("    return render(request, 'index.html')")
+    # Update settings.py with new SECRET_KEY
+    update_settings_file(project_name)
+
+    copy_django_files(project_name, app_name)
 
     # creating and editing input.css
     print("Creating and editing input.css")
