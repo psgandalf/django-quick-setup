@@ -215,7 +215,7 @@ def main():
     print("Setup complete. Run the following commands to start your project:")
     print("source .venv/bin/activate")
     print(f"cd {project_name}")
-    print("uv manage.py runserver")
+    print("uv run manage.py runserver")
 
 if __name__ == "__main__":
     main()
