@@ -1,0 +1,16 @@
+<li class="flex items-center justify-between p-2 bg-white rounded-lg shadow-sm cursor-pointer"
+    hx-post="{% url 'toggle_todo' todo.id %}"
+    hx-trigger="click"
+    hx-target="#todo-container"
+    hx-swap="innerHTML">
+    <span class="flex-grow {% if todo.completed %}line-through text-gray-500{% endif %}">{{ todo.text }}</span>
+    <button class="text-red-500 hover:text-red-700" 
+            hx-delete="{% url 'remove_todo' todo.id %}" 
+            hx-target="#todo-container" 
+            hx-swap="innerHTML"
+            @click.stop>
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+    </button>
+</li>

@@ -1,0 +1,7 @@
+<ul id="todo-list" class="mt-4 space-y-2">
+    {% for todo in todos %}
+        {% include "todo_item.html" with todo=todo %}
+    {% empty %}
+        <li class="p-2 bg-white rounded-lg shadow-sm text-gray-500">No todos yet. Add one above!</li>
+    {% endfor %}
+</ul>

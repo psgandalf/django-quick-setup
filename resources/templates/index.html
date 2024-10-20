@@ -1,0 +1,51 @@
+{% extends '_base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mx-auto mt-8 px-4" x-data="todoApp()">
+    <h1 class="text-3xl font-bold mb-6 text-green-800">Todo List</h1>
+    
+    <form hx-post="{% url 'add_todo' %}" 
+      hx-target="#todo-container" 
+      hx-swap="innerHTML" 
+      hx-indicator="#loading"
+      x-on:htmx:after-request="$refs.todoInput.value = ''">
+    {% csrf_token %}
+    <div class="flex">
+        <input 
+            type="text" 
+            name="todo" 
+            x-ref="todoInput"
+            class="flex-grow p-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-green-500" 
+            placeholder="Add a new todo"
+            required
+        >
+        <button 
+            type="submit" 
+            class="bg-green-500 text-white px-4 py-2 rounded-r-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500"
+        >
+            Add
+        </button>
+    </div>
+</form>
+<div id="loading" class="htmx-indicator">Adding...</div>
+
+  <div id="todo-container">
+      <ul id="todo-list" class="mt-4 space-y-2">
+          {% for todo in todos %}
+              {% include "todo_item.html" with todo=todo %}
+          {% empty %}
+              <li class="p-2 bg-white rounded-lg shadow-sm text-gray-500">No todos yet. Add one above!</li>
+          {% endfor %}
+      </ul>
+  </div>
+</div>
+
+<script>
+    function todoApp() {
+        return {
+            // You can add more Alpine.js functionality here if needed
+        }
+    }
+</script>
+{% endblock %}
